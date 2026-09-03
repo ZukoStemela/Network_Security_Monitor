@@ -1,0 +1,44 @@
+[
+    {
+        "ip_address": "172.30.4.2",
+        "mac_address": "20:47:47:7a:8f:62",
+        "status": "ACTIVE",
+        "is_gateway": false
+    },
+    {
+        "ip_address": "172.30.4.3",
+        "mac_address": "b0:26:28:1d:52:1f",
+        "status": "ACTIVE",
+        "is_gateway": false
+    },
+    {
+        "ip_address": "172.30.4.4",
+        "mac_address": "00:15:5d:62:40:06",
+        "status": "ACTIVE",
+        "is_gateway": false
+    },
+    {
+        "ip_address": "172.30.4.5",
+        "mac_address": "00:15:5d:62:40:03",
+        "status": "ACTIVE",
+        "is_gateway": false
+    },
+    {
+        "ip_address": "172.30.4.6",
+        "mac_address": "00:15:5d:62:40:02",
+        "status": "ACTIVE",
+        "is_gateway": false
+    },
+    {
+        "ip_address": "172.30.4.7",
+        "mac_address": "00:15:5d:62:40:0f",
+        "status": "ACTIVE",
+        "is_gateway": false
+    },
+    {
+        "ip_address": "172.30.4.9",
+        "mac_address": "68:72:51:02:3e:c6",
+        "status": "ACTIVE",
+        "is_gateway": false
+    }
+]
