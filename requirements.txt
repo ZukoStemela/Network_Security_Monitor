@@ -1,0 +1,6 @@
+# Minimal runtime & dev dependencies
+pytest>=7.0.0
+
+# Optional / recommended dev tools
+black>=24.0
+flake8>=6.0
