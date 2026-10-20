@@ -1,30 +1,82 @@
-from scanner import scan_network
-from network import get_network_info
-from baseline import detect_new_devices, update_baseline
+
+import baseline
+from device import Device
 
 
-network_info = get_network_info()
+def test_detect_new_devices(monkeypatch):
+    known_devices = [
+        {
+            "ip_address": "192.168.1.2",
+            "mac_address": "aa:bb:cc:dd:ee:01",
+            "status": "ACTIVE",
+            "is_gateway": False,
+        }
+    ]
 
-devices = scan_network(
-    network_info["network"],
-    network_info["gateway"]
-)
+    monkeypatch.setattr(
+        baseline,
+        "load_known_devices",
+        lambda: known_devices,
+    )
 
-new_devices = detect_new_devices(devices)
+    current_devices = [
+        Device(
+            "192.168.1.2",
+            mac_address="aa:bb:cc:dd:ee:01",
+        ),
+        Device(
+            "192.168.1.3",
+            mac_address="aa:bb:cc:dd:ee:02",
+        ),
+    ]
 
-if new_devices:
-    print("NEW DEVICES DETECTED")
-    print("---------------------")
+    new_devices = baseline.detect_new_devices(current_devices)
 
-    for device in new_devices:
-        print(
-            f"IP: {device['ip_address']} "
-            f"| MAC: {device['mac_address']}"
+    assert len(new_devices) == 1
+    assert new_devices[0]["ip_address"] == "192.168.1.3"
+
+
+def test_detect_new_devices_when_none_are_new(monkeypatch):
+    monkeypatch.setattr(
+        baseline,
+        "load_known_devices",
+        lambda: [
+            {
+                "ip_address": "192.168.1.2",
+                "mac_address": "aa:bb:cc:dd:ee:01",
+            }
+        ],
+    )
+
+    current_devices = [
+        Device(
+            "192.168.1.2",
+            mac_address="aa:bb:cc:dd:ee:01",
         )
-else:
-    print("No new devices detected.")
+    ]
 
-update_baseline(devices)
+    assert baseline.detect_new_devices(current_devices) == []
 
-print()
-print(f"Devices in current scan: {len(devices)}")
+
+def test_update_baseline(monkeypatch):
+    saved_devices = []
+
+    monkeypatch.setattr(
+        baseline,
+        "save_known_devices",
+        lambda devices: saved_devices.extend(devices),
+    )
+
+    current_devices = [
+        Device(
+            "192.168.1.5",
+            is_gateway=True,
+            mac_address="aa:bb:cc:dd:ee:05",
+        )
+    ]
+
+    baseline.update_baseline(current_devices)
+
+    assert len(saved_devices) == 1
+    assert saved_devices[0]["ip_address"] == "192.168.1.5"
+    assert saved_devices[0]["is_gateway"] is True
