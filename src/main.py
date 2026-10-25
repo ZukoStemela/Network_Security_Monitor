@@ -1,5 +1,7 @@
+
 from network import get_network_info
 from monitor import ping_host
+from scanner import scan_network
 
 
 def display_network_info(network_info):
@@ -14,7 +16,6 @@ def display_network_info(network_info):
 
 def display_connectivity(network_info):
     gateway = network_info["gateway"]
-
     result = ping_host(gateway)
 
     print("\nCONNECTIVITY")
@@ -26,9 +27,9 @@ def display_connectivity(network_info):
         print(f"Latency   : {result['latency']} ms")
         print(f"Loss      : {result['packet_loss']}%")
 
+
 def display_internet_connectivity():
     internet_host = "1.1.1.1"
-
     result = ping_host(internet_host)
 
     print("\nINTERNET CONNECTIVITY")
@@ -41,20 +42,50 @@ def display_internet_connectivity():
         print(f"Loss      : {result['packet_loss']}%")
 
 
+def display_devices(network_info):
+    print("\nNETWORK DEVICES")
+    print("---------------")
+    print("Scanning local network...")
+
+    devices = scan_network(
+        network_info["network"],
+        network_info["gateway"],
+    )
+
+    if not devices:
+        print("No devices replied to ping.")
+        print("Some devices may block ping.")
+        print("Active devices found: 0")
+        return
+
+    for device in devices:
+        info = device.get_info()
+        role = "GATEWAY" if info["is_gateway"] else "HOST"
+        mac = info["mac_address"] or "UNKNOWN"
+
+        print(
+            f"{info['ip_address']} | "
+            f"MAC: {mac} | "
+            f"{role}"
+        )
+
+    print(f"\nActive devices found: {len(devices)}")
+    print("Note: Devices that block ping may not appear.")
+
+
 def main():
     print("=" * 40)
     print("       NETWORK SECURITY MONITOR")
     print("=" * 40)
-    print()
 
     network_info = get_network_info()
 
     display_network_info(network_info)
     display_connectivity(network_info)
     display_internet_connectivity()
+    display_devices(network_info)
 
-    print()
-    print("=" * 40)
+    print("\n" + "=" * 40)
 
 
 if __name__ == "__main__":
