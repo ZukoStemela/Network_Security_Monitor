@@ -6,6 +6,10 @@ import subprocess
 from device import Device
 
 
+DEFAULT_MAX_HOSTS = 10
+MAX_ALLOWED_HOSTS = 256
+
+
 def is_host_alive(ip_address):
     if platform.system() == "Windows":
         command = ["ping", "-n", "1", "-w", "1000", str(ip_address)]
@@ -59,11 +63,21 @@ def get_mac_address(ip_address):
     return None
 
 
-def scan_network(network, gateway, max_hosts=10):
-    if not network or max_hosts <= 0:
+def scan_network(network, gateway, max_hosts=DEFAULT_MAX_HOSTS):
+    if not isinstance(max_hosts, int) or isinstance(max_hosts, bool):
         return []
 
-    network = ipaddress.ip_network(network, strict=False)
+    if max_hosts <= 0 or max_hosts > MAX_ALLOWED_HOSTS:
+        return []
+
+    if not isinstance(network, str) or not network.strip():
+        return []
+
+    try:
+        network = ipaddress.ip_network(network, strict=False)
+    except ValueError:
+        return []
+
     active_hosts = []
 
     for index, ip_address in enumerate(network.hosts()):
