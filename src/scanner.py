@@ -1,3 +1,4 @@
+
 import ipaddress
 import platform
 import re
@@ -49,14 +50,18 @@ def get_mac_address(ip_address):
     if platform.system() == "Windows":
         for line in result.stdout.splitlines():
             parts = line.split()
+
             if len(parts) >= 2 and parts[0] == str(ip_address):
                 mac = parts[1].replace("-", ":").lower()
+
                 if re.fullmatch(r"(?:[0-9a-f]{2}:){5}[0-9a-f]{2}", mac):
                     return mac
     else:
         parts = result.stdout.split()
+
         if "lladdr" in parts:
             mac = parts[parts.index("lladdr") + 1].lower()
+
             if re.fullmatch(r"(?:[0-9a-f]{2}:){5}[0-9a-f]{2}", mac):
                 return mac
 
@@ -98,7 +103,7 @@ def scan_network(network, gateway, max_hosts=DEFAULT_MAX_HOSTS):
     return active_hosts
 
 
-if __name__ == "__main__":
+def main():
     from network import get_network_info
 
     network_info = get_network_info()
@@ -113,17 +118,23 @@ if __name__ == "__main__":
 
     if not network:
         print("Could not determine the network. Scan cancelled.")
-    else:
-        hosts = scan_network(network, gateway)
+        return
 
-        print("Active Hosts")
-        print("------------")
+    hosts = scan_network(network, gateway)
 
-        for host in hosts:
-            info = host.get_info()
-            role = "GATEWAY" if info["is_gateway"] else "HOST"
-            mac = info["mac_address"] or "UNKNOWN"
-            print(f"{info['ip_address']} | MAC: {mac} | {role}")
+    print("Active Hosts")
+    print("------------")
 
-        print()
-        print(f"Hosts found: {len(hosts)}")
+    for host in hosts:
+        info = host.get_info()
+        role = "GATEWAY" if info["is_gateway"] else "HOST"
+        mac = info["mac_address"] or "UNKNOWN"
+
+        print(f"{info['ip_address']} | MAC: {mac} | {role}")
+
+    print()
+    print(f"Hosts found: {len(hosts)}")
+
+
+if __name__ == "__main__":
+    main()
