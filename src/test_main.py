@@ -1,4 +1,3 @@
-
 import main
 
 
@@ -129,9 +128,7 @@ def test_main_runs_network_and_connectivity_checks(monkeypatch, capsys):
 
     pinged_hosts = []
 
-    monkeypatch.setattr(
-        main, "get_network_info", lambda: network_info
-    )
+    monkeypatch.setattr(main, "get_network_info", lambda: network_info)
 
     def fake_ping(host):
         pinged_hosts.append(host)

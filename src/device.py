@@ -11,5 +11,5 @@ class Device:
             "ip_address": self.ip_address,
             "mac_address": self.mac_address,
             "status": self.status,
-            "is_gateway": self.is_gateway
+            "is_gateway": self.is_gateway,
         }

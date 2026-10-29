@@ -1,4 +1,9 @@
-from alerts import generate_alerts_for_new_devices
+
+from alerts import (
+    format_device_alert,
+    generate_alerts_for_new_devices,
+    print_alerts,
+)
 
 
 def test_generate_alerts_empty():
@@ -20,9 +25,6 @@ def test_generate_alerts_basic():
     assert "192.168.1.10" in alerts[0]
     assert "aa:bb:cc:dd:ee:ff" in alerts[0]
     assert "HOST" in alerts[0]
-
-
-from alerts import format_device_alert, print_alerts
 
 
 def test_format_device_alert_gateway():
@@ -60,4 +62,3 @@ def test_print_alerts_empty(capsys):
     print_alerts([])
 
     assert capsys.readouterr().out == "No alerts.\n"
-

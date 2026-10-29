@@ -1,4 +1,3 @@
-
 import sys
 
 import demo
@@ -63,6 +62,7 @@ def test_main_without_mock_prints_message(monkeypatch, capsys):
 
     assert "Live demo not implemented" in output
     assert "Use --mock for a safe demo." in output
+
 
 def test_standalone_execution_mock_mode(monkeypatch, capsys):
     import runpy

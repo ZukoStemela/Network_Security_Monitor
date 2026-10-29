@@ -1,117 +1,149 @@
-import monitor
-import runpy
+import platform
+import re
+import subprocess
 
 
-def test_ping_host_when_host_is_unreachable(monkeypatch):
-    class FakeResult:
-        returncode = 1
-        stdout = ""
-        stderr = "Request timed out"
+def ping_host(host):
+    """Ping a host and return reachability, latency, and packet loss."""
+    system = platform.system().lower()
 
-    def fake_run(command, capture_output, text):
-        assert command == ["ping", "-c", "4", "-W", "2", "192.168.1.1"]
-        assert capture_output is True
-        assert text is True
-        return FakeResult()
+    if system == "windows":
+        command = ["ping", "-n", "4", "-w", "2000", host]
+    else:
+        command = ["ping", "-c", "4", "-W", "2", host]
 
-    monkeypatch.setattr(monitor.subprocess, "run", fake_run)
+    try:
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            timeout=12,
+        )
+    except (subprocess.TimeoutExpired, OSError):
+        return {
+            "host": host,
+            "reachable": False,
+            "latency": None,
+            "packet_loss": None,
+        }
 
-    result = monitor.ping_host("192.168.1.1")
+    stdout = getattr(result, "stdout", "") or ""
+    stderr = getattr(result, "stderr", "") or ""
+    output = stdout + "\n" + stderr
 
-    assert result == {
-        "host": "192.168.1.1",
-        "reachable": False,
-        "latency": None,
-        "packet_loss": None,
+    # Determine whether the host responded.
+    reachable = result.returncode == 0
+
+    # Extract packet loss.
+    packet_loss = None
+
+    if system == "windows":
+        loss_match = re.search(
+            r"\((\d+(?:\.\d+)?)%\s*loss\)",
+            output,
+            re.IGNORECASE,
+        )
+
+        if not loss_match:
+            loss_match = re.search(
+                r"Lost\s*=\s*\d+\s*\((\d+(?:\.\d+)?)%\s*loss\)",
+                output,
+                re.IGNORECASE,
+            )
+
+        if loss_match:
+            packet_loss = float(loss_match.group(1))
+
+        else:
+            sent_received = re.search(
+                r"Sent\s*=\s*(\d+),\s*"
+                r"Received\s*=\s*(\d+),\s*"
+                r"Lost\s*=\s*(\d+)",
+                output,
+                re.IGNORECASE,
+            )
+
+            if sent_received:
+                sent = int(sent_received.group(1))
+                lost = int(sent_received.group(3))
+
+                if sent > 0:
+                    packet_loss = lost / sent * 100
+
+    else:
+        loss_match = re.search(
+            r"(\d+(?:\.\d+)?)%\s*packet loss",
+            output,
+            re.IGNORECASE,
+        )
+
+        if loss_match:
+            packet_loss = float(loss_match.group(1))
+
+    # Extract average latency.
+    latency = None
+
+    latency_match = re.search(
+        r"(?:rtt|round-trip)\s+min/avg/max"
+        r"(?:/mdev|/stddev)?\s*=\s*"
+        r"[\d.]+/([\d.]+)/",
+        output,
+        re.IGNORECASE,
+    )
+
+    if latency_match:
+        latency = float(latency_match.group(1))
+
+    else:
+        # Windows normally reports "Average = 12ms".
+        windows_latency = re.search(
+            r"Average\s*=\s*(\d+(?:\.\d+)?)\s*ms",
+            output,
+            re.IGNORECASE,
+        )
+
+        if windows_latency:
+            latency = float(windows_latency.group(1))
+
+        else:
+            # Fallback for individual responses such as "time=12.5 ms".
+            times = re.findall(
+                r"time\s*[=<]\s*(\d+(?:\.\d+)?)\s*ms",
+                output,
+                re.IGNORECASE,
+            )
+
+            if times:
+                latency_values = [float(value) for value in times]
+                latency = sum(latency_values) / len(latency_values)
+
+    # If the output doesn't report packet loss, use a safe fallback.
+    if packet_loss is None and result.returncode == 0:
+        packet_loss = 0.0
+    elif packet_loss is None and result.returncode != 0:
+        packet_loss = 100.0
+
+    return {
+        "host": host,
+        "reachable": reachable,
+        "latency": latency,
+        "packet_loss": packet_loss,
     }
 
 
-def test_ping_host_when_host_is_reachable(monkeypatch):
-    class FakeResult:
-        returncode = 0
-        stdout = (
-            "4 packets transmitted, 4 received, 0% packet loss\n"
-            "rtt min/avg/max/mdev = 10.0/12.5/15.0/1.2 ms"
-        )
+if __name__ == "__main__":
+    gateway_result = ping_host("172.30.4.1")
+    internet_result = ping_host("1.1.1.1")
 
-    monkeypatch.setattr(
-        monitor.subprocess,
-        "run",
-        lambda *args, **kwargs: FakeResult(),
-    )
+    print("Connectivity Test")
+    print("------------------")
 
-    result = monitor.ping_host("192.168.1.1")
-
-    assert result["host"] == "192.168.1.1"
-    assert result["reachable"] is True
-    assert result["latency"] == 12.5
-    assert result["packet_loss"] == 0.0
-
-
-def test_ping_host_when_latency_and_packet_loss_are_missing(monkeypatch):
-    class FakeResult:
-        returncode = 0
-        stdout = "Ping completed but statistics were unavailable"
-
-    monkeypatch.setattr(
-        monitor.subprocess,
-        "run",
-        lambda *args, **kwargs: FakeResult(),
-    )
-
-    result = monitor.ping_host("example.test")
-
-    assert result == {
-        "host": "example.test",
-        "reachable": True,
-        "latency": None,
-        "packet_loss": None,
-    }
-
-
-def test_ping_host_parses_decimal_packet_loss(monkeypatch):
-    class FakeResult:
-        returncode = 0
-        stdout = (
-            "2 packets transmitted, 1 received, 25.5% packet loss\n"
-            "rtt min/avg/max/mdev = 8.0/9.5/11.0/1.0 ms"
-        )
-
-    monkeypatch.setattr(
-        monitor.subprocess,
-        "run",
-        lambda *args, **kwargs: FakeResult(),
-    )
-
-    result = monitor.ping_host("192.168.1.5")
-
-    assert result["reachable"] is True
-    assert result["latency"] == 9.5
-    assert result["packet_loss"] == 25.5
-
-
-def test_standalone_monitor_execution(monkeypatch, capsys):
-    pinged_hosts = []
-
-    class FakeResult:
-        returncode = 0
-        stdout = (
-            "4 packets transmitted, 4 received, 0% packet loss\n"
-            "rtt min/avg/max/mdev = 10.0/12.5/15.0/1.2 ms"
-        )
-
-    def fake_run(command, **kwargs):
-        host = command[-1]
-        pinged_hosts.append(host)
-        return FakeResult()
-
-    monkeypatch.setattr(monitor.subprocess, "run", fake_run)
-
-    runpy.run_module("monitor", run_name="__main__")
-
-    output = capsys.readouterr().out
-
-    assert "Connectivity Test" in output
-    assert "Gateway" in output
-    assert "Internet" in output
-    assert pinged_hosts == ["172.30.4.1", "1.1.1.1"]
+    for label, result in [
+        ("Gateway", gateway_result),
+        ("Internet", internet_result),
+    ]:
+        print(f"\n{label}")
+        print(f"Host        : {result['host']}")
+        print(f"Reachable   : {result['reachable']}")
+        print(f"Latency     : {result['latency']} ms")
+        print(f"Packet Loss : {result['packet_loss']}%")

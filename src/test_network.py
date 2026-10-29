@@ -1,6 +1,4 @@
-
 import runpy
-import socket
 import subprocess
 
 import network
@@ -175,10 +173,7 @@ def test_get_network_linux_invalid_route(monkeypatch):
     monkeypatch.setattr(network.platform, "system", lambda: "Linux")
 
     class FakeResult:
-        stdout = (
-            "not-a-network/24 dev eth0\n"
-            "192.168.1.0/24 dev eth0\n"
-        )
+        stdout = "not-a-network/24 dev eth0\n" "192.168.1.0/24 dev eth0\n"
 
     monkeypatch.setattr(
         network.subprocess,
@@ -293,7 +288,6 @@ def test_get_network_info_uses_local_ip_when_route_ip_is_missing(
     assert result["network"] == "192.168.1.0/24"
 
 
-
 def test_standalone_network_execution(monkeypatch, capsys):
     monkeypatch.setattr(
         network.socket,
@@ -328,7 +322,6 @@ def test_standalone_network_execution(monkeypatch, capsys):
     assert "Interface : Ethernet" in output
     assert "Gateway   : 192.168.1.1" in output
     assert "Network   : 192.168.1.0/24" in output
-
 
     runpy.run_path("src/network.py", run_name="__main__")
 

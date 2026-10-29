@@ -28,9 +28,6 @@ def detect_new_devices(current_devices):
 
 
 def update_baseline(current_devices):
-    devices = [
-        device_to_dict(device)
-        for device in current_devices
-    ]
+    devices = [device_to_dict(device) for device in current_devices]
 
     save_known_devices(devices)

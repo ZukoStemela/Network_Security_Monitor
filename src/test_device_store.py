@@ -1,4 +1,3 @@
-
 import json
 
 import device_store
@@ -14,9 +13,7 @@ def test_load_known_devices_returns_empty_when_missing(tmp_path, monkeypatch):
 
 def test_load_known_devices_reads_json(tmp_path, monkeypatch):
     data_file = tmp_path / "known_devices.json"
-    devices = [
-        {"ip_address": "192.168.1.10", "is_gateway": False}
-    ]
+    devices = [{"ip_address": "192.168.1.10", "is_gateway": False}]
     data_file.write_text(json.dumps(devices), encoding="utf-8")
 
     monkeypatch.setattr(device_store, "DATA_FILE", str(data_file))

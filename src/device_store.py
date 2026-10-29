@@ -1,8 +1,8 @@
 import json
 import os
 
-
-# Compute data file path relative to this file, not the current working directory.
+# Compute the data file path relative to this file,
+# not the current working directory.
 ROOT = os.path.dirname(os.path.dirname(__file__))
 DATA_DIR = os.path.join(ROOT, "data")
 DATA_FILE = os.path.join(DATA_DIR, "known_devices.json")

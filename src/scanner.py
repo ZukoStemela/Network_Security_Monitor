@@ -1,3 +1,4 @@
+"""Scan a local IPv4 network and identify active devices."""
 
 import ipaddress
 import platform
@@ -6,12 +7,11 @@ import subprocess
 
 from device import Device
 
-
 MAX_ALLOWED_HOSTS = 256
 
 
 def is_host_alive(ip_address):
-    """Return True when the host replies to ping."""
+    """Return True when the host responds to ping."""
     if platform.system() == "Windows":
         command = ["ping", "-n", "1", "-w", "700", str(ip_address)]
     else:
@@ -48,8 +48,10 @@ def get_mac_address(ip_address):
     except (OSError, subprocess.TimeoutExpired):
         return None
 
+    output = getattr(result, "stdout", "") or ""
+
     if platform.system() == "Windows":
-        for line in result.stdout.splitlines():
+        for line in output.splitlines():
             parts = line.split()
 
             if len(parts) >= 2 and parts[0] == str(ip_address):
@@ -58,19 +60,22 @@ def get_mac_address(ip_address):
                 if re.fullmatch(r"(?:[0-9a-f]{2}:){5}[0-9a-f]{2}", mac):
                     return mac
     else:
-        parts = result.stdout.split()
+        parts = output.split()
 
         if "lladdr" in parts:
-            mac = parts[parts.index("lladdr") + 1].lower()
+            index = parts.index("lladdr")
 
-            if re.fullmatch(r"(?:[0-9a-f]{2}:){5}[0-9a-f]{2}", mac):
-                return mac
+            if index + 1 < len(parts):
+                mac = parts[index + 1].lower()
+
+                if re.fullmatch(r"(?:[0-9a-f]{2}:){5}[0-9a-f]{2}", mac):
+                    return mac
 
     return None
 
 
 def get_confirmed_neighbors(network):
-    """Return IPs with usable MAC addresses in the neighbor table."""
+    """Return local IP addresses with valid MAC entries."""
     confirmed = set()
 
     if platform.system() != "Windows":
@@ -87,7 +92,9 @@ def get_confirmed_neighbors(network):
     except (OSError, subprocess.TimeoutExpired):
         return confirmed
 
-    for line in result.stdout.splitlines():
+    output = getattr(result, "stdout", "") or ""
+
+    for line in output.splitlines():
         parts = line.split()
 
         if len(parts) < 3:
@@ -101,8 +108,13 @@ def get_confirmed_neighbors(network):
         mac = parts[1].replace("-", ":").lower()
 
         if (
-            address in network
-            and address not in (network.network_address, network.broadcast_address)
+            isinstance(address, ipaddress.IPv4Address)
+            and address in network
+            and address
+            not in (
+                network.network_address,
+                network.broadcast_address,
+            )
             and re.fullmatch(r"(?:[0-9a-f]{2}:){5}[0-9a-f]{2}", mac)
             and mac != "ff:ff:ff:ff:ff:ff"
         ):
@@ -112,59 +124,83 @@ def get_confirmed_neighbors(network):
 
 
 def scan_network(network, gateway, max_hosts=MAX_ALLOWED_HOSTS):
-    """Scan a bounded local subnet using ping and neighbor information."""
-    if not isinstance(max_hosts, int) or isinstance(max_hosts, bool):
-        return []
-
-    if max_hosts <= 0 or max_hosts > MAX_ALLOWED_HOSTS:
+    """Scan a bounded local subnet and return discovered Device objects."""
+    if (
+        not isinstance(max_hosts, int)
+        or isinstance(max_hosts, bool)
+        or max_hosts <= 0
+        or max_hosts > MAX_ALLOWED_HOSTS
+    ):
         return []
 
     if not isinstance(network, str) or not network.strip():
         return []
 
     try:
-        network = ipaddress.ip_network(network, strict=False)
+        network = ipaddress.ip_network(network.strip(), strict=False)
     except ValueError:
         return []
 
-    if network.version != 4:
+    if not isinstance(network, ipaddress.IPv4Network):
         return []
 
     candidates = list(network.hosts())[:max_hosts]
+
+    if not candidates:
+        return []
+
     gateway_ip = None
 
     try:
         parsed_gateway = ipaddress.ip_address(gateway)
-        if parsed_gateway in network:
+
+        if (
+            isinstance(parsed_gateway, ipaddress.IPv4Address)
+            and parsed_gateway in network
+        ):
             gateway_ip = str(parsed_gateway)
-    except ValueError:
+    except (ValueError, TypeError):
         pass
 
-    if gateway_ip and ipaddress.ip_address(gateway_ip) in candidates:
-        candidates.remove(ipaddress.ip_address(gateway_ip))
-
+    # Put the gateway first without exceeding the host limit.
     if gateway_ip:
-        candidates.insert(0, ipaddress.ip_address(gateway_ip))
+        gateway_address = ipaddress.ip_address(gateway_ip)
+
+        if gateway_address in candidates:
+            candidates.remove(gateway_address)
+
+        candidates.insert(0, gateway_address)
+        candidates = candidates[:max_hosts]
 
     confirmed_neighbors = get_confirmed_neighbors(network)
-    active_hosts = {}
-
-    # Test the gateway and addresses that Windows has neighbor entries for.
     priority_ips = set(confirmed_neighbors)
+
     if gateway_ip:
         priority_ips.add(gateway_ip)
 
+    active_hosts = {}
+    checked_ips = set()
+
+    # Probe priority addresses first, recording each attempt.
     for address in candidates:
         ip = str(address)
-        if ip in priority_ips and is_host_alive(ip):
+
+        if ip not in priority_ips:
+            continue
+
+        checked_ips.add(ip)
+
+        if is_host_alive(ip):
             active_hosts[ip] = True
 
-    # Probe remaining addresses in the local subnet.
+    # Probe remaining addresses without repeating failed attempts.
     for address in candidates:
         ip = str(address)
 
-        if ip in active_hosts:
+        if ip in checked_ips:
             continue
+
+        checked_ips.add(ip)
 
         if is_host_alive(ip):
             active_hosts[ip] = True
@@ -184,23 +220,25 @@ def scan_network(network, gateway, max_hosts=MAX_ALLOWED_HOSTS):
 
 
 def main():
+    """Run the scanner as a standalone program."""
     from network import get_network_info
-
-    network_info = get_network_info()
-    network = network_info["network"]
-    gateway = network_info["gateway"]
 
     print("Network Scanner")
     print("---------------")
-    print(f"Detected Network: {network}")
-    print(f"Gateway: {gateway}")
-    print()
+
+    network_info = get_network_info() or {}
+    network = network_info.get("network", "")
+    gateway = network_info.get("gateway", "")
 
     if not network:
         print("Could not determine the network. Scan cancelled.")
         return
 
+    print(f"Detected Network: {network}")
+    print(f"Gateway: {gateway}")
+    print()
     print("Scanning the local subnet. This may take a few minutes...")
+
     hosts = scan_network(network, gateway)
 
     print()
@@ -214,10 +252,11 @@ def main():
             info = host.get_info()
             role = "GATEWAY" if info["is_gateway"] else "HOST"
             mac = info["mac_address"] or "UNKNOWN"
+
             print(f"{info['ip_address']} | MAC: {mac} | {role}")
 
     print()
-    print(f"Hosts confirmed by ping: {len(hosts)}")
+    print(f"Hosts found: {len(hosts)}")
     print("Note: Devices that block ping may not appear.")
 
 

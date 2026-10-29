@@ -1,4 +1,3 @@
-
 import baseline
 from device import Device
 

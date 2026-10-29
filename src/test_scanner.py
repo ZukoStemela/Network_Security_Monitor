@@ -1,4 +1,3 @@
-
 import runpy
 import subprocess
 from types import SimpleNamespace
@@ -41,9 +40,7 @@ def test_scan_network_respects_max_hosts(monkeypatch):
     monkeypatch.setattr(scanner, "is_host_alive", fake_is_host_alive)
     monkeypatch.setattr(scanner, "get_mac_address", lambda ip: None)
 
-    hosts = scanner.scan_network(
-        "192.168.1.0/24", "192.168.1.1", max_hosts=3
-    )
+    hosts = scanner.scan_network("192.168.1.0/24", "192.168.1.1", max_hosts=3)
 
     assert len(checked) == 3
     assert len(hosts) == 3
@@ -53,9 +50,7 @@ def test_scan_network_rejects_invalid_network():
     assert scanner.scan_network("not-a-network", "192.168.1.1") == []
 
 
-@pytest.mark.parametrize(
-    "limit", [0, -1, scanner.MAX_ALLOWED_HOSTS + 1]
-)
+@pytest.mark.parametrize("limit", [0, -1, scanner.MAX_ALLOWED_HOSTS + 1])
 def test_scan_network_rejects_invalid_max_hosts(limit):
     assert scanner.scan_network("192.168.1.0/24", "192.168.1.1", limit) == []
 
@@ -78,7 +73,9 @@ def test_scan_network_ignores_unreachable_hosts(monkeypatch):
     monkeypatch.setattr(
         scanner,
         "get_mac_address",
-        lambda ip: pytest.fail("MAC lookup should not run for unreachable hosts"),
+        lambda ip: pytest.fail(
+            "MAC lookup should not run for unreachable hosts"
+        ),
     )
 
     assert scanner.scan_network("192.168.1.0/29", "192.168.1.1") == []
@@ -163,8 +160,7 @@ def test_get_mac_address_linux(monkeypatch):
         "run",
         lambda *args, **kwargs: SimpleNamespace(
             stdout=(
-                "192.168.1.10 dev eth0 lladdr "
-                "aa:bb:cc:dd:ee:ff REACHABLE"
+                "192.168.1.10 dev eth0 lladdr " "aa:bb:cc:dd:ee:ff REACHABLE"
             )
         ),
     )
@@ -264,8 +260,7 @@ def test_get_mac_address_handles_linux_without_matching_entry(monkeypatch):
         "run",
         lambda *args, **kwargs: SimpleNamespace(
             stdout=(
-                "192.168.1.10 dev eth0 lladdr "
-                "aa:bb:cc:dd:ee:ff REACHABLE"
+                "192.168.1.10 dev eth0 lladdr " "aa:bb:cc:dd:ee:ff REACHABLE"
             )
         ),
     )

@@ -42,7 +42,7 @@ def get_route_info():
             ["powershell", "-NoProfile", "-Command", command],
             capture_output=True,
             text=True,
-            check=True
+            check=True,
         )
 
         parts = result.stdout.strip().split("|")
@@ -64,10 +64,7 @@ def get_route_info():
         }
 
     result = subprocess.run(
-        ["ip", "route"],
-        capture_output=True,
-        text=True,
-        check=True
+        ["ip", "route"], capture_output=True, text=True, check=True
     )
 
     for line in result.stdout.splitlines():
@@ -96,9 +93,7 @@ def get_network(interface):
 
         if ip_address and prefix is not None:
             return str(
-                ipaddress.ip_interface(
-                    f"{ip_address}/{prefix}"
-                ).network
+                ipaddress.ip_interface(f"{ip_address}/{prefix}").network
             )
 
         return None
@@ -107,7 +102,7 @@ def get_network(interface):
         ["ip", "-4", "route", "show", "dev", interface],
         capture_output=True,
         text=True,
-        check=True
+        check=True,
     )
 
     for line in result.stdout.splitlines():

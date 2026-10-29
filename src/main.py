@@ -1,4 +1,3 @@
-
 from network import get_network_info
 from monitor import ping_host
 from scanner import scan_network
@@ -63,11 +62,7 @@ def display_devices(network_info):
         role = "GATEWAY" if info["is_gateway"] else "HOST"
         mac = info["mac_address"] or "UNKNOWN"
 
-        print(
-            f"{info['ip_address']} | "
-            f"MAC: {mac} | "
-            f"{role}"
-        )
+        print(f"{info['ip_address']} | " f"MAC: {mac} | " f"{role}")
 
     print(f"\nActive devices found: {len(devices)}")
     print("Note: Devices that block ping may not appear.")

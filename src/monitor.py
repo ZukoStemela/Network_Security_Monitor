@@ -3,13 +3,12 @@ import platform
 import re
 import subprocess
 
-def ping_host(host):
-    """Ping a host and extract reachability, latency, and packet loss."""
-    import re
-    import platform
-    import subprocess
 
-    if platform.system().lower() == "windows":
+def ping_host(host):
+    """Ping a host and return reachability, latency, and packet loss."""
+    system = platform.system().lower()
+
+    if system == "windows":
         command = ["ping", "-n", "4", "-w", "2000", host]
     else:
         command = ["ping", "-c", "4", "-W", "2", host]
@@ -29,22 +28,56 @@ def ping_host(host):
             "packet_loss": None,
         }
 
-    output = (
-        (getattr(result, "stdout", "") or "")
-        + "\n"
-        + (getattr(result, "stderr", "") or "")
-    )
+    stdout = getattr(result, "stdout", "") or ""
+    stderr = getattr(result, "stderr", "") or ""
+    output = stdout + "\n" + stderr
 
+    reachable = result.returncode == 0
     packet_loss = None
-    loss_match = re.search(
-        r"(\d+(?:\.\d+)?)%\s*packet loss",
-        output,
-        re.IGNORECASE,
-    )
-    if loss_match:
-        packet_loss = float(loss_match.group(1))
+
+    if system == "windows":
+        loss_match = re.search(
+            r"\((\d+(?:\.\d+)?)%\s*loss\)",
+            output,
+            re.IGNORECASE,
+        )
+
+        if not loss_match:
+            loss_match = re.search(
+                r"Lost\s*=\s*\d+\s*\((\d+(?:\.\d+)?)%\s*loss\)",
+                output,
+                re.IGNORECASE,
+            )
+
+        if loss_match:
+            packet_loss = float(loss_match.group(1))
+        else:
+            sent_received = re.search(
+                r"Sent\s*=\s*(\d+),\s*"
+                r"Received\s*=\s*(\d+),\s*"
+                r"Lost\s*=\s*(\d+)",
+                output,
+                re.IGNORECASE,
+            )
+
+            if sent_received:
+                sent = int(sent_received.group(1))
+                lost = int(sent_received.group(3))
+
+                if sent > 0:
+                    packet_loss = lost / sent * 100
+    else:
+        loss_match = re.search(
+            r"(\d+(?:\.\d+)?)%\s*packet loss",
+            output,
+            re.IGNORECASE,
+        )
+
+        if loss_match:
+            packet_loss = float(loss_match.group(1))
 
     latency = None
+
     latency_match = re.search(
         r"(?:rtt|round-trip)\s+min/avg/max"
         r"(?:/mdev|/stddev)?\s*=\s*"
@@ -52,12 +85,37 @@ def ping_host(host):
         output,
         re.IGNORECASE,
     )
+
     if latency_match:
         latency = float(latency_match.group(1))
+    else:
+        windows_latency = re.search(
+            r"Average\s*=\s*(\d+(?:\.\d+)?)\s*ms",
+            output,
+            re.IGNORECASE,
+        )
+
+        if windows_latency:
+            latency = float(windows_latency.group(1))
+        else:
+            times = re.findall(
+                r"time\s*[=<]\s*(\d+(?:\.\d+)?)\s*ms",
+                output,
+                re.IGNORECASE,
+            )
+
+            if times:
+                latency_values = [float(value) for value in times]
+                latency = sum(latency_values) / len(latency_values)
+
+    if packet_loss is None and result.returncode == 0:
+        packet_loss = 0.0
+    elif packet_loss is None:
+        packet_loss = 100.0
 
     return {
         "host": host,
-        "reachable": result.returncode == 0,
+        "reachable": reachable,
         "latency": latency,
         "packet_loss": packet_loss,
     }
@@ -72,7 +130,7 @@ if __name__ == "__main__":
 
     for label, result in [
         ("Gateway", gateway_result),
-        ("Internet", internet_result)
+        ("Internet", internet_result),
     ]:
         print(f"\n{label}")
         print(f"Host        : {result['host']}")
