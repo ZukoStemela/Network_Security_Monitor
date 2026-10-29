@@ -1,60 +1,93 @@
-(The file `/home/wtc29/student_work/NSM/README.md` exists, but is empty)
-# Network Security Monitor
+# Network Security Monitor (NSM)
 
-A lightweight Python-based tool for monitoring a local network, identifying active hosts, comparing the current device list against a saved baseline, and alerting on unexpected changes.
+A lightweight Python-based network monitoring tool that discovers active devices on a local network, checks connectivity, maintains a baseline of known devices, and generates alerts when unexpected devices are detected.
 
 ## Overview
 
-Network Security Monitor (NSM) is designed for small home or office networks where it is useful to maintain awareness of connected devices. It gathers local network information, scans the active IPv4 range, resolves device MAC addresses, and compares the results against a trusted baseline stored in `data/known_devices.json`.
+Network Security Monitor (NSM) is a defensive cybersecurity project designed to help users understand activity on a local IPv4 network.
 
-The project is intentionally lightweight and script-driven, making it easy to understand, extend, and test. It is useful as a baseline security utility or as a starting point for a more advanced network monitoring system.
+The application collects local network information, discovers reachable hosts, checks connectivity, and compares discovered devices against a saved baseline. Potentially new devices are reported so that the user can investigate them.
+
+NSM also includes a mock demonstration mode for testing the alert workflow without scanning a live network.
 
 ## Features
 
-- Detect local hostname, IP address, gateway, interface, and network range
-- Discover active devices on the local network
-- Ping hosts to check connectivity and latency
-- Resolve MAC addresses for known active hosts
-- Store a baseline of trusted devices in JSON
-- Detect new devices against the stored baseline
-- Format human-readable alerts for suspicious or unexpected additions
-- Provide a mock demo mode for safe testing without live network access
+- **Network discovery:** Identify active hosts on a local IPv4 network.
+- **Network information:** Display the local hostname, IP address, network interface, gateway, and network range.
+- **Connectivity monitoring:** Check host reachability, latency, and packet loss.
+- **Device identification:** Collect IP and MAC address information where available.
+- **Baseline management:** Save and compare known devices using a JSON file.
+- **New-device detection:** Identify devices that are not present in the saved baseline.
+- **Security alerts:** Generate readable alerts containing device information and role.
+- **Interactive baseline protection:** Require explicit confirmation before replacing the saved baseline and additional confirmation when new devices are detected.
+- **Mock demonstration:** Demonstrate the detection and alert workflow without live network scanning.
+- **Automated testing:** Use pytest to verify application behaviour.
+- **Code quality:** Use Black and Flake8 for formatting and linting.
 
 ## Project structure
 
-- `src/network.py` — determines local network information and routing data
-- `src/scanner.py` — scans the local network and identifies active hosts
-- `src/device.py` — device model used during discovery
-- `src/device_store.py` — loads and saves the stored baseline
-- `src/baseline.py` — compares scans to known devices and updates the baseline
-- `src/alerts.py` — formats detection alerts for output
-- `src/monitor.py` — connectivity checks for hosts and gateways
-- `src/main.py` — entry point that prints key network and connectivity information
-- `src/baseline_check.py` — baseline-aware scan that reports new devices
-- `src/demo.py` — mock demo workflow for demonstration purposes
-- `data/known_devices.json` — persistent baseline of known devices
-- `tests/` — project test suite (via `src/test_*.py` files in this repo)
+```text
+Network_Security_Monitor/
+├── data/
+│   └── known_devices.json
+├── src/
+│   ├── alerts.py
+│   ├── baseline.py
+│   ├── baseline_check.py
+│   ├── demo.py
+│   ├── device.py
+│   ├── device_store.py
+│   ├── main.py
+│   ├── monitor.py
+│   ├── network.py
+│   ├── scanner.py
+│   └── test_*.py
+├── requirements.txt
+└── README.md
+```
+
+### Main components
+
+| File | Purpose |
+|---|---|
+| `src/network.py` | Retrieves local network information. |
+| `src/scanner.py` | Discovers active hosts on the local network. |
+| `src/device.py` | Represents discovered network devices. |
+| `src/device_store.py` | Loads and saves device data. |
+| `src/baseline.py` | Compares discovered devices with the saved baseline. |
+| `src/baseline_check.py` | Runs the baseline-aware scan and handles confirmation prompts. |
+| `src/alerts.py` | Formats alerts for newly detected devices. |
+| `src/monitor.py` | Checks host connectivity, latency, and packet loss. |
+| `src/main.py` | Displays network information and connectivity results. |
+| `src/demo.py` | Runs the mock demonstration workflow. |
+| `data/known_devices.json` | Stores the baseline of known devices. |
 
 ## Requirements
 
-- Python 3.10+
-- Access to local network tools available on the host OS (`ping`, `arp`, `ip`, etc.)
-- Optional: a Linux/macOS or Windows environment with networking enabled
+- Python 3.10 or later.
+- Git, for cloning the repository.
+- Network access and appropriate permissions for live network discovery.
+- Operating-system networking utilities where required, such as `ping`, `arp`, and `ip`.
+- Python packages listed in `requirements.txt`.
+
+Some discovery results may vary depending on the operating system, network configuration, firewall rules, and device availability.
 
 ## Installation
 
-1. Clone the repository.
-2. Create and activate a virtual environment:
+### 1. Clone the repository
 
-```bash
+```powershell
+git clone https://github.com/ZukoStemela/Network_Security_Monitor.git
+cd Network_Security_Monitor
+```
+
+### 2. Create a virtual environment
+
+```powershell
 python -m venv .venv
 ```
 
-Linux/macOS:
-
-```bash
-source .venv/bin/activate
-```
+### 3. Activate the environment
 
 Windows PowerShell:
 
@@ -62,49 +95,74 @@ Windows PowerShell:
 .\.venv\Scripts\Activate.ps1
 ```
 
-3. Install dependencies:
+Linux:
 
 ```bash
-pip install -r requirements.txt
+source .venv/bin/activate
+```
+
+### 4. Install dependencies
+
+```powershell
+python -m pip install -r requirements.txt
 ```
 
 ## Usage
 
-### Network overview
+Run commands from the project's root directory.
 
-```bash
-python src/main.py
+### 1. Display network information and connectivity
+
+```powershell
+python .\src\main.py
 ```
 
-This prints local machine information, gateway connectivity, and internet reachability.
+Displays available local network details and connectivity information.
 
-### Scan for active hosts
+### 2. Scan for active devices
 
-```bash
-python src/scanner.py
+```powershell
+python .\src\scanner.py
 ```
 
-This identifies the devices currently reachable on the local network.
+Runs the network discovery component to identify reachable devices.
 
-### Detect unexpected devices and update the baseline
+### 3. Check for unexpected devices
 
-```bash
-python src/baseline_check.py
+```powershell
+python .\src\baseline_check.py
 ```
 
-This compares the latest scan to the stored baseline, displays any new devices, and writes the current scan to `data/known_devices.json`.
+This workflow compares the current discovery results with the saved baseline.
 
-### Run the mock demo
+**Baseline safety process:**
 
-```bash
-python src/demo.py --mock
+1. Review the detected devices and any reported changes.
+2. Type `UPDATE` when prompted to confirm that you want to replace the saved baseline.
+3. If new devices are detected, review them and type `TRUST` only if you have verified that all newly detected devices are recognized and authorized.
+4. If you decline a confirmation, the baseline remains unchanged.
+
+Updating the baseline replaces the saved device list. Devices that are offline during a scan may be omitted from the new baseline. Review the results carefully before approving an update.
+
+### 4. Run the mock demonstration
+
+```powershell
+python .\src\demo.py --mock
 ```
 
-This demonstrates alert generation without making live network calls.
+Demonstrates the monitoring and alert workflow using simulated data, without performing live network discovery.
 
-## Baseline behaviour
+The mock demonstration is intended for presentations, development, and testing.
 
-The baseline is a JSON list of known devices, with each entry containing values such as:
+## Baseline management
+
+The baseline is stored in:
+
+```text
+data/known_devices.json
+```
+
+A baseline entry may contain fields such as the following:
 
 ```json
 [
@@ -117,26 +175,86 @@ The baseline is a JSON list of known devices, with each entry containing values 
 ]
 ```
 
-Each scan checks whether a device MAC address already exists in the baseline. If a MAC address is new, it is treated as a potential security change and can be surfaced as an alert.
+This is an illustrative example; actual entries depend on the application's device data format.
 
-## Development
+The application compares discovered devices with the saved baseline. A newly detected MAC address can indicate a change in the network and may generate an alert.
 
-Run the test suite:
+**A new device is not automatically proof of malicious activity.** It may be a legitimate phone, laptop, printer, or another device. Investigate unfamiliar devices before deciding whether to trust them.
 
-```bash
+## Testing
+
+The project uses pytest for automated tests.
+
+Run the complete test suite:
+
+```powershell
 python -m pytest -q
 ```
 
-Recommended tooling:
+Check code style with Flake8:
 
-```bash
-pip install black flake8
+```powershell
+python -m flake8 src
 ```
+
+Format Python files with Black when needed:
+
+```powershell
+python -m black --line-length 79 src
+```
+
+### Current test status
+
+The latest recorded test run completed successfully:
+
+```text
+95 passed
+```
+
+The latest recorded Flake8 check also completed without reporting errors. Run both commands again after making changes to confirm the current state.
+
+## Security and responsible use
+
+- Only scan networks you own or have explicit permission to assess.
+- Use the tool for defensive monitoring and authorized security testing.
+- Review unfamiliar devices before trusting them.
+- Back up important baseline data before replacing it.
+- Remember that network discovery is not guaranteed to identify every connected device.
+- Treat alerts as indicators that require investigation, not definitive proof of an attack.
+- Avoid publishing sensitive network information, including internal IP details, MAC addresses, and device inventories.
+
+## Known limitations
+
+- Host discovery depends on network reachability and operating-system behaviour.
+- Firewalls and network isolation may prevent devices from responding to discovery requests.
+- MAC address information may be unavailable for some hosts.
+- A device's IP address may change over time.
+- The baseline is a simple reference list, not a complete intrusion-detection system.
+- Mock results are simulated and do not represent actual network activity.
+
+## Future improvements
+
+Potential extensions include:
+
+- A live monitoring dashboard.
+- Historical device discovery and event logs.
+- Device classification and improved inventory management.
+- Configurable alert severity.
+- More comprehensive cross-platform testing.
+- Exportable monitoring reports.
+- Scheduled scans and change notifications.
 
 ## Contributing
 
-Contributions are welcome. If you add new functionality, please include a clear description of the change and ensure relevant tests still pass.
+Contributions and suggestions are welcome.
+
+When modifying the project:
+
+1. Keep changes focused and documented.
+2. Add or update tests for new behaviour.
+3. Run pytest and Flake8 before committing.
+4. Do not include passwords, access tokens, or sensitive network inventories in commits.
 
 ## License
 
-This repository does not currently contain a `LICENSE` file. If you plan to distribute or publish the project, add an appropriate open-source licence before doing so.
+No `LICENSE` file is currently documented in this repository. 
