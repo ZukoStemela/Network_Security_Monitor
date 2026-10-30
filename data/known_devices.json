@@ -1,1 +1,14 @@
-[]
+[
+    {
+        "ip_address": "192.168.112.119",
+        "mac_address": "0e:a8:9a:a7:41:56",
+        "status": "ACTIVE",
+        "is_gateway": true
+    },
+    {
+        "ip_address": "192.168.112.193",
+        "mac_address": null,
+        "status": "ACTIVE",
+        "is_gateway": false
+    }
+]
